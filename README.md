@@ -29,7 +29,7 @@ ollama pull qwen2.5
 cp .env.example .env
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --port 8085
 ```
 
 ## Run tests
@@ -41,6 +41,65 @@ pytest
 ```
 
 Integration tests (`test_recommend_end_to_end_with_ollama`) call a live local Ollama instance when available; they are skipped if Ollama or `qwen2.5` is not running.
+
+## CLI
+
+Table-side terminal client for ranked COA recommendations. Requires the API running (see Quick start).
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Start the API in another terminal:
+# uvicorn app.main:app --reload --port 8085
+
+python -m cli recommend --file tests/fixtures/sample_game_state.json
+```
+
+### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `recommend` | yes | — | Subcommand: fetch ranked COAs for a game state file |
+| `--file PATH` | yes | — | Path to game state JSON (see `docs/GAME-STATE-SCHEMA.md`) |
+| `--base-url URL` | no | `http://127.0.0.1:8085` | API base URL for remote hosts |
+
+### Sample output
+
+```text
+Active player: red
+
+1. [build_city] Upgrade settlement on strong ore hex. (Rationale:
+   Doubles ore production on a high-probability number.)
+
+2. [maritime_trade] Trade grain for ore at 4:1. (Rationale: Sets up a
+   city upgrade next turn.)
+
+3. [end_turn] End turn if no better trades appear. (Rationale: Preserves
+   resources when no build is affordable.)
+```
+
+Long rationales wrap at 72 columns for readability.
+
+### Errors
+
+The CLI exits with a nonzero status and prints a clear message to stderr when:
+
+- **File not found** — missing or unreadable `--file` path
+- **Invalid JSON** — malformed game state file
+- **Validation error (HTTP 422)** — game state or proposed actions rejected by the API
+- **Service error (HTTP 502)** — Ollama unavailable or invalid LLM response
+- **Network error** — cannot connect to `--base-url` (e.g. API not running)
+
+Example:
+
+```bash
+python -m cli recommend --file NONEXISTENT.json
+# File not found: NONEXISTENT.json
+
+python -m cli recommend --file tests/fixtures/sample_game_state.json --base-url http://localhost:9999
+# Cannot connect to API at http://localhost:9999. Is the server running?
+```
 
 ## API
 
