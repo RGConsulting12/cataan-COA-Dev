@@ -23,19 +23,30 @@ LLM-assisted **courses of action (COA)** advisor for [*Catan*](https://www.catan
 # Start Ollama (from openclaw-hub)
 ~/openclaw-hub/scripts/ollama-serve.sh
 ~/openclaw-hub/scripts/wait-for-ollama.sh
+ollama pull qwen2.5
 
-# App (after slice 1+)
+# App
 cp .env.example .env
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
 ```
 
-## API (planned)
+## Run tests
 
-`POST /recommend` — accept game state JSON, return 3 COAs with rationale.
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest
+```
 
-`GET /health` — service and Ollama connectivity check.
+Integration tests (`test_recommend_end_to_end_with_ollama`) call a live local Ollama instance when available; they are skipped if Ollama or `qwen2.5` is not running.
+
+## API
+
+`POST /recommend` — accept game state JSON (see `docs/GAME-STATE-SCHEMA.md`), return exactly 3 ranked COAs with rationale.
+
+`GET /health` — service and Ollama connectivity check (502 when Ollama is down).
 
 ## Docs
 
