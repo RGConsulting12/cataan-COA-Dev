@@ -63,11 +63,11 @@ def test_recommend_post_success(sample_game_state: dict):
         mock_response.status_code = 200
         mock_response.json.return_value = SAMPLE_RESPONSE
 
-        result = cli.recommend_post("http://127.0.0.1:8080", sample_game_state)
+        result = cli.recommend_post("http://127.0.0.1:8085", sample_game_state)
 
     assert result == SAMPLE_RESPONSE
     mock_post.assert_called_once_with(
-        "http://127.0.0.1:8080/recommend",
+        "http://127.0.0.1:8085/recommend",
         json=sample_game_state,
         timeout=60.0,
     )
@@ -152,7 +152,7 @@ def test_recommend_post_validation_error_422(sample_game_state: dict):
         mock_response.json.return_value = {"detail": detail}
 
         with pytest.raises(cli.CliError) as exc_info:
-            cli.recommend_post("http://127.0.0.1:8080", sample_game_state)
+            cli.recommend_post("http://127.0.0.1:8085", sample_game_state)
 
     assert "Validation error" in str(exc_info.value)
     assert "Settlement cannot be placed" in str(exc_info.value)
@@ -184,7 +184,7 @@ def test_recommend_post_server_error_502(sample_game_state: dict):
         mock_response.json.return_value = {"detail": detail}
 
         with pytest.raises(cli.CliError) as exc_info:
-            cli.recommend_post("http://127.0.0.1:8080", sample_game_state)
+            cli.recommend_post("http://127.0.0.1:8085", sample_game_state)
 
     message = str(exc_info.value)
     assert "Service error" in message
@@ -249,6 +249,6 @@ def test_recommend_post_connect_error(sample_game_state: dict):
         side_effect=httpx.ConnectError("connection refused"),
     ):
         with pytest.raises(cli.CliError) as exc_info:
-            cli.recommend_post("http://127.0.0.1:8080", sample_game_state)
+            cli.recommend_post("http://127.0.0.1:8085", sample_game_state)
 
     assert "Cannot connect to API" in str(exc_info.value)

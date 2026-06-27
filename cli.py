@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8080"
+DEFAULT_BASE_URL = "http://127.0.0.1:8085"
 OUTPUT_WIDTH = 72
 
 

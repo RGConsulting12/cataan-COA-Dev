@@ -29,7 +29,7 @@ ollama pull qwen2.5
 cp .env.example .env
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --port 8085
 ```
 
 ## Run tests
@@ -51,7 +51,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Start the API in another terminal:
-# uvicorn app.main:app --reload --port 8080
+# uvicorn app.main:app --reload --port 8085
 
 python -m cli recommend --file tests/fixtures/sample_game_state.json
 ```
@@ -62,7 +62,7 @@ python -m cli recommend --file tests/fixtures/sample_game_state.json
 |----------|----------|---------|-------------|
 | `recommend` | yes | — | Subcommand: fetch ranked COAs for a game state file |
 | `--file PATH` | yes | — | Path to game state JSON (see `docs/GAME-STATE-SCHEMA.md`) |
-| `--base-url URL` | no | `http://127.0.0.1:8080` | API base URL for remote hosts |
+| `--base-url URL` | no | `http://127.0.0.1:8085` | API base URL for remote hosts |
 
 ### Sample output
 
