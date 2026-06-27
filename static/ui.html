@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catan COA — Session Viewer</title>
+  <link rel="stylesheet" href="/static/css/ui.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Catan COA Session Viewer</h1>
+    <p class="subtitle">Read-only local operator UI — no auth, no move application</p>
+  </header>
+
+  <section class="controls" aria-label="Session controls">
+    <div class="control-group">
+      <label for="fixture-select">Create from example</label>
+      <select id="fixture-select">
+        <option value="">— select fixture —</option>
+      </select>
+      <button type="button" id="create-session-btn">Create session</button>
+    </div>
+    <div class="control-group">
+      <label for="session-select">Active session</label>
+      <select id="session-select">
+        <option value="">— none —</option>
+      </select>
+      <button type="button" id="reload-session-btn">Reload</button>
+    </div>
+    <p id="status-message" class="status-message" role="status"></p>
+  </section>
+
+  <section id="session-header" class="session-header" aria-label="Session context" hidden>
+    <h2>Session context</h2>
+    <dl>
+      <div><dt>Session ID</dt><dd id="hdr-session-id">—</dd></div>
+      <div><dt>Turn</dt><dd id="hdr-turn">—</dd></div>
+      <div><dt>Phase</dt><dd id="hdr-phase">—</dd></div>
+      <div><dt>Active player</dt><dd id="hdr-active-player">—</dd></div>
+      <div><dt>Label</dt><dd id="hdr-label">—</dd></div>
+    </dl>
+  </section>
+
+  <section class="board-section" aria-label="Hex board">
+    <h2>Board</h2>
+    <svg id="board-svg" viewBox="0 0 600 500" role="img" aria-label="Catan hex board">
+      <title>Catan board from session state</title>
+    </svg>
+  </section>
+
+  <section class="timeline-section" aria-label="Turn timeline">
+    <h2>Turn timeline</h2>
+    <ol id="player-timeline" class="player-timeline"></ol>
+  </section>
+
+  <section class="coa-section" aria-label="Recommended courses of action">
+    <h2>Recommended COAs (read-only)</h2>
+    <div id="coa-cards" class="coa-cards"></div>
+  </section>
+
+  <script src="/static/js/board.js"></script>
+  <script src="/static/js/ui.js"></script>
+</body>
+</html>

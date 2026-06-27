@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 
 class Phase(str, Enum):
@@ -108,6 +109,74 @@ class GameState(BaseModel):
         if self.active_player not in player_ids:
             raise ValueError("active_player must match a player id")
         return self
+
+
+class GameStatePatch(BaseModel):
+    """Patchable subset of game state fields stored on a session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    phase: Phase | None = None
+    active_player: str | None = None
+    dice_rolled: bool | None = None
+    last_roll: list[int] | None = None
+    notes: str | None = None
+
+    @field_validator("last_roll")
+    @classmethod
+    def validate_last_roll(cls, value: list[int] | None) -> list[int] | None:
+        if value is None:
+            return value
+        if len(value) != 2:
+            raise ValueError("last_roll must contain exactly two dice values")
+        for die in value:
+            if die < 1 or die > 6:
+                raise ValueError("each die in last_roll must be between 1 and 6")
+        return value
+
+
+class SessionPatch(BaseModel):
+    """Allowed fields for `PATCH /sessions/{id}`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    turn_number: int | None = Field(default=None, ge=1)
+    label: str | None = None
+    state: GameStatePatch | None = None
+
+
+class SessionCreateRequest(BaseModel):
+    """Create a session from inline state or an examples fixture."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fixture: str | None = Field(
+        default=None,
+        description="Name of a file under examples/ (e.g. sample1_early_expansion.json).",
+    )
+    state: GameState | None = None
+    label: str | None = None
+    turn_number: int = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def validate_source(self) -> SessionCreateRequest:
+        if self.fixture and self.state is not None:
+            raise ValueError("Provide either fixture or state, not both")
+        if not self.fixture and self.state is None:
+            raise ValueError("Provide fixture or state")
+        return self
+
+
+class GameSession(BaseModel):
+    """Persisted game session wrapping a validated GameState snapshot."""
+
+    id: str
+    turn_number: int = Field(ge=1, default=1)
+    label: str | None = None
+    source_fixture: str | None = None
+    state: GameState
+    created_at: datetime
+    updated_at: datetime
 
 
 class ActionType(str, Enum):
