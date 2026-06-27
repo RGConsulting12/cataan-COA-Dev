@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.ollama import OllamaError, build_recommend_prompt, load_rules
+from app.ollama import OllamaError, build_recommend_prompt, load_rules, recommend_with_retries
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "sample_game_state.json"
 
@@ -199,3 +200,103 @@ def test_recommend_end_to_end_with_ollama(sample_game_state: dict):
     assert response.status_code == 200
     body = response.json()
     assert len(body["recommendations"]) == 3
+
+
+def test_recommend_rules_violation_distance_returns_422(sample_game_state: dict):
+    payload = deepcopy(sample_game_state)
+    payload["proposed_actions"] = [
+        {"action_type": "build_settlement", "vertex_id": "v2"}
+    ]
+    response = client.post("/recommend", json=payload)
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert isinstance(detail, list)
+    assert any(err["code"] == "distance_rule_violation" for err in detail)
+    assert all("rules_ref" in err for err in detail)
+
+
+def test_recommend_rules_violation_affordability_returns_422(sample_game_state: dict):
+    payload = deepcopy(sample_game_state)
+    payload["players"][0]["resources"]["grain"] = 0
+    payload["players"][0]["resources"]["ore"] = 0
+    payload["proposed_actions"] = [
+        {"action_type": "build_city", "vertex_id": "v1"}
+    ]
+    response = client.post("/recommend", json=payload)
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert any(err["code"] == "insufficient_resources" for err in detail)
+
+
+def test_recommend_rules_violation_does_not_call_ollama(sample_game_state: dict):
+    payload = deepcopy(sample_game_state)
+    payload["proposed_actions"] = [
+        {"action_type": "move_robber", "hex_id": "h3"}
+    ]
+    with (
+        patch("app.main.check_ollama_health") as mock_health,
+        patch("app.main.recommend_with_retries") as mock_recommend,
+    ):
+        response = client.post("/recommend", json=payload)
+    assert response.status_code == 422
+    mock_health.assert_not_called()
+    mock_recommend.assert_not_called()
+
+
+def test_recommend_malformed_ollama_json_retries_then_502(sample_game_state: dict):
+    malformed = {"message": {"content": "not-json"}}
+    valid = _valid_llm_payload()
+
+    with (
+        patch("app.main.check_ollama_health"),
+        patch("app.main.load_rules", return_value="rules"),
+        patch("app.ollama.ollama_call", side_effect=[malformed, malformed, malformed]),
+    ):
+        response = client.post("/recommend", json=sample_game_state)
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["ollama"] == "invalid_response"
+
+
+def test_recommend_well_formed_ollama_output_accepted(sample_game_state: dict):
+    with (
+        patch("app.main.check_ollama_health"),
+        patch("app.main.load_rules", return_value="rules"),
+        patch("app.ollama.ollama_call", return_value=_valid_llm_payload()),
+    ):
+        response = client.post("/recommend", json=sample_game_state)
+
+    assert response.status_code == 200
+    assert len(response.json()["recommendations"]) == 3
+
+
+def test_recommend_with_retries_retries_on_malformed_json(sample_game_state: dict):
+    malformed = {"message": {"content": "{bad json"}}
+    valid = _valid_llm_payload()
+
+    with patch("app.ollama.ollama_call", side_effect=[malformed, valid]) as mock_call:
+        result = recommend_with_retries(
+            game_state_json=json.dumps(sample_game_state),
+            rules_text="rules",
+            model="qwen2.5",
+            base_url="http://127.0.0.1:11434",
+        )
+
+    assert result.active_player == "red"
+    assert len(result.recommendations) == 3
+    assert mock_call.call_count == 2
+
+
+def test_parse_ollama_json_response_accepts_valid_payload():
+    from app.ollama import parse_ollama_json_response
+
+    payload = parse_ollama_json_response(_valid_llm_payload()["message"]["content"])
+    assert payload["active_player"] == "red"
+    assert len(payload["recommendations"]) == 3
+
+
+def test_parse_ollama_json_response_rejects_malformed():
+    from app.ollama import parse_ollama_json_response
+
+    with pytest.raises(Exception):
+        parse_ollama_json_response("not json at all")

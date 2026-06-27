@@ -18,6 +18,7 @@ Local FastAPI service that recommends **three ranked courses of action** for the
 
 1. **Health check** — verify API and Ollama (`qwen2.5`) are up.
 2. **Recommend** — submit game state → receive 3 COAs with rationale.
+3. **Pre-LLM rules validation** — before Ollama is invoked, obvious illegal moves in `proposed_actions` (or JSON `notes`) are rejected with HTTP 422 and structured errors (`field`, `code`, `message`, `rules_ref`). Legal states proceed to the LLM; malformed LLM JSON is retried up to 3 times, then HTTP 502.
 
 ## API contract (MVP)
 
@@ -80,12 +81,13 @@ Exactly **3** recommendations, ranks 1–3, all must be legal per rules doc.
 - [ ] `GET /health` returns 200 when Ollama is running with configured model
 - [ ] `POST /recommend` returns 3 COAs for fixture game state
 - [ ] Invalid game state returns 422 with clear validation errors
+- [x] Pre-LLM rules validation rejects obvious illegal moves (slice 2)
 - [ ] `pytest` passes
 - [ ] README documents run instructions
 
 ## Open questions
 
-- Add lightweight rules validator before LLM call? (slice 2)
+- ~~Add lightweight rules validator before LLM call? (slice 2)~~ — implemented in slice 2
 
 ## Human gates
 

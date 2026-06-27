@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 
 from app.models import GameState, HealthResponse, RecommendResponse
+from app.rules_validator import validate_game_state
 from app.ollama import (
     OllamaError,
     check_ollama_health,
@@ -32,9 +37,18 @@ def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
 
 @app.post("/recommend", response_model=RecommendResponse)
 def recommend(
-    game_state: GameState,
+    body: dict[str, Any],
     settings: Settings = Depends(get_settings),
 ) -> RecommendResponse:
+    rules_errors = validate_game_state(body)
+    if rules_errors:
+        raise HTTPException(status_code=422, detail=rules_errors)
+
+    try:
+        game_state = GameState.model_validate(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=jsonable_encoder(exc.errors())) from exc
+
     try:
         check_ollama_health(settings.ollama_base_url, settings.ollama_model)
     except OllamaError as exc:

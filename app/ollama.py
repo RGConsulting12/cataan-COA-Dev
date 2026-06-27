@@ -7,6 +7,13 @@ import httpx
 from app.models import RecommendResponse, extract_json_object
 
 
+def parse_ollama_json_response(resp: str) -> dict:
+    """Strictly parse and validate COA JSON from an Ollama message body."""
+    payload = extract_json_object(resp)
+    RecommendResponse.model_validate(payload)
+    return payload
+
+
 class OllamaError(Exception):
     """Raised when Ollama is unreachable or returns an error."""
 
@@ -86,7 +93,7 @@ def parse_recommend_response(raw_response: dict) -> RecommendResponse:
     content = message.get("content", "")
     if not content:
         raise ValueError("Empty LLM response content")
-    payload = extract_json_object(content)
+    payload = parse_ollama_json_response(content)
     return RecommendResponse.model_validate(payload)
 
 
