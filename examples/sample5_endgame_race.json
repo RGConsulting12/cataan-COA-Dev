@@ -1,0 +1,75 @@
+{
+  "phase": "main",
+  "active_player": "red",
+  "dice_rolled": true,
+  "last_roll": [6, 3],
+  "players": [
+    {
+      "id": "red",
+      "color": "red",
+      "resources": { "lumber": 2, "brick": 1, "wool": 1, "grain": 2, "ore": 3 },
+      "development_cards_in_hand": 2,
+      "knights_played": 2,
+      "roads_remaining": 9,
+      "settlements_remaining": 1,
+      "cities_remaining": 1,
+      "victory_points": 8,
+      "hidden_vp_cards": 1
+    },
+    {
+      "id": "blue",
+      "color": "blue",
+      "resources": { "lumber": 3, "brick": 4, "wool": 0, "grain": 1, "ore": 0 },
+      "development_cards_in_hand": 0,
+      "knights_played": 0,
+      "roads_remaining": 6,
+      "settlements_remaining": 2,
+      "cities_remaining": 4,
+      "victory_points": 7,
+      "hidden_vp_cards": 0
+    },
+    {
+      "id": "green",
+      "color": "green",
+      "resources": { "lumber": 0, "brick": 0, "wool": 2, "grain": 3, "ore": 2 },
+      "development_cards_in_hand": 3,
+      "knights_played": 3,
+      "roads_remaining": 13,
+      "settlements_remaining": 3,
+      "cities_remaining": 3,
+      "victory_points": 7,
+      "hidden_vp_cards": 0
+    }
+  ],
+  "board": {
+    "hexes": [
+      { "id": "h1", "terrain": "mountains", "number": 8, "robber": false },
+      { "id": "h2", "terrain": "hills", "number": 6, "robber": false },
+      { "id": "h3", "terrain": "forest", "number": 5, "robber": false },
+      { "id": "h4", "terrain": "fields", "number": 9, "robber": true }
+    ],
+    "vertices": [
+      { "id": "v1", "hexes": ["h1", "h2"], "owner": "red", "building": "city" },
+      { "id": "v2", "hexes": ["h2", "h3"], "owner": "red", "building": "city" },
+      { "id": "v3", "hexes": ["h3", "h4"], "owner": "blue", "building": "settlement" },
+      { "id": "v4", "hexes": ["h1", "h4"], "owner": "green", "building": "settlement" },
+      { "id": "v5", "hexes": ["h2", "h4"], "owner": null, "building": null }
+    ],
+    "edges": [
+      { "id": "e1", "vertices": ["v1", "v2"], "owner": "red" },
+      { "id": "e2", "vertices": ["v2", "v3"], "owner": "blue" },
+      { "id": "e3", "vertices": ["v3", "v4"], "owner": "blue" },
+      { "id": "e4", "vertices": ["v2", "v5"], "owner": "blue" }
+    ],
+    "harbors": [
+      { "vertex_id": "v6", "type": "lumber" }
+    ]
+  },
+  "bank": {
+    "resources": { "lumber": 8, "brick": 7, "wool": 10, "grain": 9, "ore": 6 }
+  },
+  "development_deck_remaining": 12,
+  "longest_road_player": "blue",
+  "largest_army_player": "green",
+  "notes": "Endgame at 8 VP: red needs one more point; city on v5, dev-card VP, or maritime trade to close; blue threatens longest road extension."
+}

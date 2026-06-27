@@ -1,0 +1,72 @@
+{
+  "phase": "main",
+  "active_player": "brown",
+  "dice_rolled": true,
+  "last_roll": [3, 5],
+  "players": [
+    {
+      "id": "brown",
+      "color": "brown",
+      "resources": { "lumber": 0, "brick": 6, "wool": 1, "grain": 1, "ore": 0 },
+      "development_cards_in_hand": 0,
+      "knights_played": 0,
+      "roads_remaining": 12,
+      "settlements_remaining": 3,
+      "cities_remaining": 4,
+      "victory_points": 4,
+      "hidden_vp_cards": 0
+    },
+    {
+      "id": "purple",
+      "color": "purple",
+      "resources": { "lumber": 2, "brick": 0, "wool": 2, "grain": 3, "ore": 2 },
+      "development_cards_in_hand": 1,
+      "knights_played": 0,
+      "roads_remaining": 13,
+      "settlements_remaining": 3,
+      "cities_remaining": 4,
+      "victory_points": 5,
+      "hidden_vp_cards": 0
+    },
+    {
+      "id": "yellow",
+      "color": "yellow",
+      "resources": { "lumber": 1, "brick": 1, "wool": 0, "grain": 0, "ore": 4 },
+      "development_cards_in_hand": 0,
+      "knights_played": 1,
+      "roads_remaining": 11,
+      "settlements_remaining": 2,
+      "cities_remaining": 3,
+      "victory_points": 6,
+      "hidden_vp_cards": 0
+    }
+  ],
+  "board": {
+    "hexes": [
+      { "id": "h1", "terrain": "hills", "number": 8, "robber": false },
+      { "id": "h2", "terrain": "forest", "number": 4, "robber": false },
+      { "id": "h3", "terrain": "mountains", "number": 10, "robber": false },
+      { "id": "h4", "terrain": "fields", "number": 6, "robber": true }
+    ],
+    "vertices": [
+      { "id": "v1", "hexes": ["h1", "h2"], "owner": "brown", "building": "settlement" },
+      { "id": "v2", "hexes": ["h1", "h3"], "owner": "brown", "building": "settlement" },
+      { "id": "v3", "hexes": ["h3", "h4"], "owner": "yellow", "building": "city" },
+      { "id": "v4", "hexes": ["h2", "h4"], "owner": "purple", "building": "settlement" }
+    ],
+    "edges": [
+      { "id": "e1", "vertices": ["v1", "v2"], "owner": "brown" },
+      { "id": "e2", "vertices": ["v2", "v3"], "owner": "yellow" }
+    ],
+    "harbors": [
+      { "vertex_id": "v1", "type": "brick" }
+    ]
+  },
+  "bank": {
+    "resources": { "lumber": 12, "brick": 6, "wool": 14, "grain": 11, "ore": 10 }
+  },
+  "development_deck_remaining": 19,
+  "longest_road_player": "yellow",
+  "largest_army_player": null,
+  "notes": "Brick cartel with 2:1 port: brown holds excess brick and needs ore for a city; trade politics with leader yellow matter."
+}

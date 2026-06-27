@@ -137,8 +137,56 @@ class Recommendation(BaseModel):
 
 
 class RecommendResponse(BaseModel):
-    active_player: str
-    recommendations: list[Recommendation] = Field(min_length=3, max_length=3)
+    """Ranked COA recommendations for the active player."""
+
+    active_player: str = Field(
+        description="Player id from the submitted game state who receives recommendations.",
+        examples=["red"],
+    )
+    recommendations: list[Recommendation] = Field(
+        min_length=3,
+        max_length=3,
+        description="Exactly three ranked courses of action (ranks 1, 2, and 3).",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "active_player": "red",
+                    "recommendations": [
+                        {
+                            "rank": 1,
+                            "action_type": "build_city",
+                            "summary": "Upgrade settlement on strong ore hex.",
+                            "details": {
+                                "vertex_id": "v1",
+                                "cost": {"grain": 2, "ore": 3},
+                            },
+                            "rationale": "Doubles ore production on a high-probability number.",
+                            "rules_refs": ["§6 Building costs", "§4 Turn structure"],
+                        },
+                        {
+                            "rank": 2,
+                            "action_type": "maritime_trade",
+                            "summary": "Trade grain for ore at 4:1.",
+                            "details": {"give": {"grain": 4}, "receive": {"ore": 1}},
+                            "rationale": "Sets up a city upgrade next turn.",
+                            "rules_refs": ["§7 Maritime trade"],
+                        },
+                        {
+                            "rank": 3,
+                            "action_type": "end_turn",
+                            "summary": "End turn if no better trades appear.",
+                            "details": {},
+                            "rationale": "Preserves resources when no build is affordable.",
+                            "rules_refs": ["§4 Turn structure"],
+                        },
+                    ],
+                }
+            ]
+        }
+    }
 
     @model_validator(mode="after")
     def validate_ranks(self) -> RecommendResponse:
@@ -149,9 +197,32 @@ class RecommendResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    status: str
-    ollama: str
-    model: str
+    """Health check payload returned by `GET /health`."""
+
+    status: str = Field(
+        description="API process status. `ok` when the service is running.",
+        examples=["ok"],
+    )
+    ollama: str = Field(
+        description="Ollama connectivity status. `ok` when the configured model is reachable.",
+        examples=["ok"],
+    )
+    model: str = Field(
+        description="Ollama model name used for COA generation.",
+        examples=["qwen2.5"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "status": "ok",
+                    "ollama": "ok",
+                    "model": "qwen2.5",
+                }
+            ]
+        }
+    }
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
