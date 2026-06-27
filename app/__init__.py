@@ -1,0 +1,1 @@
+"""Catan COA Advisor API."""
