@@ -1,0 +1,74 @@
+{
+  "phase": "main",
+  "active_player": "orange",
+  "dice_rolled": true,
+  "last_roll": [5, 6],
+  "players": [
+    {
+      "id": "orange",
+      "color": "orange",
+      "resources": { "lumber": 3, "brick": 2, "wool": 1, "grain": 0, "ore": 0 },
+      "development_cards_in_hand": 0,
+      "knights_played": 0,
+      "roads_remaining": 13,
+      "settlements_remaining": 3,
+      "cities_remaining": 4,
+      "victory_points": 2,
+      "hidden_vp_cards": 0
+    },
+    {
+      "id": "white",
+      "color": "white",
+      "resources": { "lumber": 1, "brick": 1, "wool": 2, "grain": 2, "ore": 1 },
+      "development_cards_in_hand": 0,
+      "knights_played": 0,
+      "roads_remaining": 14,
+      "settlements_remaining": 4,
+      "cities_remaining": 4,
+      "victory_points": 2,
+      "hidden_vp_cards": 0
+    },
+    {
+      "id": "blue",
+      "color": "blue",
+      "resources": { "lumber": 2, "brick": 0, "wool": 1, "grain": 1, "ore": 2 },
+      "development_cards_in_hand": 0,
+      "knights_played": 0,
+      "roads_remaining": 14,
+      "settlements_remaining": 4,
+      "cities_remaining": 4,
+      "victory_points": 2,
+      "hidden_vp_cards": 0
+    }
+  ],
+  "board": {
+    "hexes": [
+      { "id": "h1", "terrain": "forest", "number": 8, "robber": false },
+      { "id": "h2", "terrain": "hills", "number": 6, "robber": false },
+      { "id": "h3", "terrain": "pasture", "number": 5, "robber": false },
+      { "id": "h4", "terrain": "fields", "number": 9, "robber": false },
+      { "id": "h5", "terrain": "desert", "number": null, "robber": true }
+    ],
+    "vertices": [
+      { "id": "v1", "hexes": ["h1", "h2", "h5"], "owner": "orange", "building": "settlement" },
+      { "id": "v2", "hexes": ["h2", "h3", "h5"], "owner": "white", "building": "settlement" },
+      { "id": "v3", "hexes": ["h3", "h4", "h5"], "owner": "blue", "building": "settlement" },
+      { "id": "v4", "hexes": ["h1", "h2"], "owner": null, "building": null },
+      { "id": "v5", "hexes": ["h1", "h4"], "owner": null, "building": null }
+    ],
+    "edges": [
+      { "id": "e1", "vertices": ["v1", "v4"], "owner": "orange" },
+      { "id": "e2", "vertices": ["v4", "v5"], "owner": null }
+    ],
+    "harbors": [
+      { "vertex_id": "v6", "type": "3:1" }
+    ]
+  },
+  "bank": {
+    "resources": { "lumber": 14, "brick": 13, "wool": 15, "grain": 16, "ore": 17 }
+  },
+  "development_deck_remaining": 23,
+  "longest_road_player": null,
+  "largest_army_player": null,
+  "notes": "Early game: orange can afford a road toward contested v5 or bank resources for a settlement next turn."
+}

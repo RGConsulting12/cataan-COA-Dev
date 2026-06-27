@@ -56,6 +56,14 @@ pip install -r requirements.txt
 python -m cli recommend --file tests/fixtures/sample_game_state.json
 ```
 
+### Example library
+
+Five annotated Catan game states live in [`examples/`](examples/README.md) for demo, onboarding, and manual API/CLI validation. Each file targets a distinct strategic decision (early expansion, dev-card engine, port trading, robber phase, endgame race). See [`examples/README.md`](examples/README.md) for scenario themes and expected COA patterns.
+
+```bash
+python -m cli recommend --file examples/sample1_early_expansion.json
+```
+
 ### Arguments
 
 | Argument | Required | Default | Description |
@@ -122,11 +130,15 @@ Optional `proposed_actions` (or the same array inside JSON `notes`) describe can
 
 `GET /health` — service and Ollama connectivity check (502 when Ollama is down).
 
+Interactive OpenAPI reference: `http://127.0.0.1:8080/docs` (tags, descriptions, and response examples for `/health` and `/recommend`).
+
 ## Docs
 
 - `docs/IDEA-BRIEF.md` — product intent
 - `docs/PRD.md` — requirements
 - `docs/CATAN-OFFICIAL-RULES.md` — rules reference for the LLM
+- `docs/GAME-STATE-SCHEMA.md` — request JSON schema
+- `examples/README.md` — curated sample game states for demo and validation
 - `ROADMAP.md` — Ensamble delivery slices
 
 ## Repository
