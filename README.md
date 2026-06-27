@@ -29,8 +29,10 @@ ollama pull qwen2.5
 cp .env.example .env
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --port 8085
 ```
+
+Open the session viewer at [http://127.0.0.1:8085/ui](http://127.0.0.1:8085/ui) (read-only; no auth).
 
 ## Run tests
 
@@ -51,7 +53,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Start the API in another terminal:
-# uvicorn app.main:app --reload --port 8080
+# uvicorn app.main:app --reload --port 8085
 
 python -m cli recommend --file tests/fixtures/sample_game_state.json
 ```
@@ -70,7 +72,7 @@ python -m cli recommend --file examples/sample1_early_expansion.json
 |----------|----------|---------|-------------|
 | `recommend` | yes | — | Subcommand: fetch ranked COAs for a game state file |
 | `--file PATH` | yes | — | Path to game state JSON (see `docs/GAME-STATE-SCHEMA.md`) |
-| `--base-url URL` | no | `http://127.0.0.1:8080` | API base URL for remote hosts |
+| `--base-url URL` | no | `http://127.0.0.1:8085` | API base URL for remote hosts |
 
 ### Sample output
 
@@ -130,7 +132,49 @@ Optional `proposed_actions` (or the same array inside JSON `notes`) describe can
 
 `GET /health` — service and Ollama connectivity check (502 when Ollama is down).
 
-Interactive OpenAPI reference: `http://127.0.0.1:8080/docs` (tags, descriptions, and response examples for `/health` and `/recommend`).
+### Sessions (file-backed, no database)
+
+Sessions persist as JSON under `data/sessions/{id}.json`. Create from an inline game state or an `examples/sample*.json` fixture.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/sessions` | Create session (`fixture` or `state` body) |
+| `GET` | `/sessions/{id}` | Retrieve session (404 if missing) |
+| `PATCH` | `/sessions/{id}` | Update `turn_number`, `label`, or patchable `state` fields |
+| `POST` | `/sessions/{id}/recommend` | Three ranked COAs for the stored state |
+| `GET` | `/examples` | List available `examples/sample*.json` fixtures |
+
+**Create from fixture:**
+
+```bash
+curl -s -X POST http://127.0.0.1:8085/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"fixture":"sample1_early_expansion.json"}'
+```
+
+**Patch session header fields:**
+
+```bash
+curl -s -X PATCH http://127.0.0.1:8085/sessions/{id} \
+  -H 'Content-Type: application/json' \
+  -d '{"turn_number":4,"state":{"phase":"main","notes":"Updated"}}'
+```
+
+**Recommend from session:**
+
+```bash
+curl -s -X POST http://127.0.0.1:8085/sessions/{id}/recommend
+```
+
+Patchable `state` fields: `phase`, `active_player`, `dice_rolled`, `last_roll`, `notes`. Protected fields (`id`, `board`, `players`, timestamps) cannot be changed via PATCH.
+
+### Web UI
+
+`GET /ui` — minimal read-only viewer: session header (turn, phase, active player), hex board (SVG), player timeline, and three COA cards loaded from the session API. Select an example fixture to create a session, then switch sessions to refresh the board and recommendations. Optional query: `/ui?session_id={id}`.
+
+Static assets: `/static/css/ui.css`, `/static/js/ui.js`, `/static/js/board.js`.
+
+Interactive OpenAPI reference: `http://127.0.0.1:8085/docs` (tags, descriptions, and response examples for `/health`, `/recommend`, and `/sessions`).
 
 ## Docs
 

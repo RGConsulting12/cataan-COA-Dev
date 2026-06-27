@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from app import __version__
-from app.models import GameState, HealthResponse, RecommendResponse
+from app.models import (
+    GameSession,
+    GameState,
+    HealthResponse,
+    RecommendResponse,
+    SessionCreateRequest,
+    SessionPatch,
+)
 from app.rules_validator import validate_game_state
 from app.ollama import (
     OllamaError,
@@ -15,7 +25,10 @@ from app.ollama import (
     load_rules,
     recommend_with_retries,
 )
+from app import sessions as session_store
 from app.settings import Settings, get_settings
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 OPENAPI_TAGS = [
     {
@@ -33,6 +46,18 @@ OPENAPI_TAGS = [
             "context — no per-user session or persisted game history is stored."
         ),
     },
+    {
+        "name": "Sessions",
+        "description": (
+            "File-backed game sessions under `data/sessions/`. Create from inline "
+            "JSON or `examples/sample*.json` fixtures; retrieve, patch header fields, "
+            "and request COA recommendations for the stored state."
+        ),
+    },
+    {
+        "name": "UI",
+        "description": "Minimal read-only web UI for inspecting sessions and COAs.",
+    },
 ]
 
 app = FastAPI(
@@ -42,11 +67,13 @@ app = FastAPI(
         "Stateless recommendation API for *Catan* courses of action (COA). "
         "Submit a complete game-state snapshot; receive exactly three ranked "
         "recommended moves with rationale grounded in the official rules. "
-        "Responses depend only on the request payload and backend configuration "
-        "(Ollama model, rules document) — not on stored user or session state."
+        "File-backed game sessions and a minimal `/ui` viewer are available for "
+        "local operator use — no database or authentication."
     ),
     openapi_tags=OPENAPI_TAGS,
 )
+
+app.mount("/static", StaticFiles(directory=str(REPO_ROOT / "static")), name="static")
 
 _HEALTH_OK_EXAMPLE = {
     "status": "ok",
@@ -102,6 +129,43 @@ _RECOMMEND_422_EXAMPLE = {
         }
     ]
 }
+
+
+def _run_recommend(game_state: GameState, settings: Settings) -> RecommendResponse:
+    rules_errors = validate_game_state(game_state.model_dump())
+    if rules_errors:
+        raise HTTPException(status_code=422, detail=rules_errors)
+
+    try:
+        check_ollama_health(settings.ollama_base_url, settings.ollama_model)
+    except OllamaError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"status": "error", "ollama": "unavailable", "message": str(exc)},
+        ) from exc
+
+    try:
+        rules_text = load_rules(str(settings.rules_path_resolved))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    try:
+        return recommend_with_retries(
+            game_state_json=game_state.model_dump_json(),
+            rules_text=rules_text,
+            model=settings.ollama_model,
+            base_url=settings.ollama_base_url,
+        )
+    except OllamaError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"status": "error", "ollama": "request_failed", "message": str(exc)},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"status": "error", "ollama": "invalid_response", "message": str(exc)},
+        ) from exc
 
 
 @app.get(
@@ -192,34 +256,116 @@ def recommend(
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=jsonable_encoder(exc.errors())) from exc
 
-    try:
-        check_ollama_health(settings.ollama_base_url, settings.ollama_model)
-    except OllamaError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={"status": "error", "ollama": "unavailable", "message": str(exc)},
-        ) from exc
+    return _run_recommend(game_state, settings)
 
-    try:
-        rules_text = load_rules(str(settings.rules_path_resolved))
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    game_state_json = game_state.model_dump_json()
+@app.get(
+    "/examples",
+    tags=["Sessions"],
+    summary="List available example game-state fixtures",
+)
+def list_examples() -> dict[str, list[str]]:
+    return {"fixtures": session_store.list_example_states()}
+
+
+@app.post(
+    "/sessions",
+    response_model=GameSession,
+    status_code=201,
+    tags=["Sessions"],
+    summary="Create a persisted game session",
+    description=(
+        "Create a session from `examples/sample*.json` via `fixture`, or from an "
+        "inline `state` object. Sessions are stored as JSON files under "
+        "`data/sessions/{id}.json`."
+    ),
+)
+def create_session(body: SessionCreateRequest) -> GameSession:
     try:
-        return recommend_with_retries(
-            game_state_json=game_state_json,
-            rules_text=rules_text,
-            model=settings.ollama_model,
-            base_url=settings.ollama_base_url,
+        if body.fixture:
+            return session_store.create_session_from_fixture(
+                body.fixture,
+                turn_number=body.turn_number,
+            )
+        assert body.state is not None
+        return session_store.create_session_from_state(
+            body.state,
+            label=body.label,
+            turn_number=body.turn_number,
         )
-    except OllamaError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={"status": "error", "ollama": "request_failed", "message": str(exc)},
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={"status": "error", "ollama": "invalid_response", "message": str(exc)},
-        ) from exc
+    except session_store.FixtureNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Fixture not found: {exc}") from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=jsonable_encoder(exc.errors())) from exc
+
+
+@app.get(
+    "/sessions/{session_id}",
+    response_model=GameSession,
+    tags=["Sessions"],
+    summary="Retrieve a game session",
+)
+def get_session(session_id: str) -> GameSession:
+    try:
+        return session_store.load_session(session_id)
+    except session_store.SessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}") from exc
+
+
+@app.patch(
+    "/sessions/{session_id}",
+    response_model=GameSession,
+    tags=["Sessions"],
+    summary="Update patchable session fields",
+    description=(
+        "Patchable top-level fields: `turn_number`, `label`. "
+        "Patchable `state` fields: `phase`, `active_player`, `dice_rolled`, "
+        "`last_roll`, `notes`. Protected fields (`id`, `created_at`, board, players) "
+        "cannot be changed via PATCH."
+    ),
+)
+def update_session(session_id: str, body: SessionPatch) -> GameSession:
+    try:
+        return session_store.patch_session(session_id, body)
+    except session_store.SessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}") from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=jsonable_encoder(exc.errors())) from exc
+
+
+@app.post(
+    "/sessions/{session_id}/recommend",
+    response_model=RecommendResponse,
+    tags=["Sessions"],
+    summary="Recommend COAs for a stored session",
+)
+def recommend_session(
+    session_id: str,
+    settings: Settings = Depends(get_settings),
+) -> RecommendResponse:
+    try:
+        session = session_store.load_session(session_id)
+    except session_store.SessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}") from exc
+
+    return _run_recommend(session.state, settings)
+
+
+@app.get(
+    "/ui",
+    tags=["UI"],
+    summary="Minimal session viewer (read-only)",
+)
+def ui_page(
+    session_id: str | None = Query(default=None, description="Optional session to load"),
+) -> FileResponse:
+    if session_id:
+        try:
+            session_store.load_session(session_id)
+        except session_store.SessionNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}") from exc
+
+    return FileResponse(
+        REPO_ROOT / "static" / "ui.html",
+        media_type="text/html",
+    )
