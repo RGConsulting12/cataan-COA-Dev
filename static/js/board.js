@@ -20,7 +20,11 @@
     brown: "#6f4e37",
   };
 
-  const HEX_SIZE = 42;
+  const HEX_SIZE = 38;
+  const HEX_WIDTH = HEX_SIZE * 2;
+  const HEX_HEIGHT = HEX_SIZE * Math.sqrt(3);
+  const HORIZ_SPACING = HEX_WIDTH * 0.75;
+  const VERT_SPACING = HEX_HEIGHT;
 
   function hexIndex(hexId) {
     const match = /(\d+)/.exec(hexId);
@@ -29,34 +33,52 @@
 
   function layoutHexCenters(hexes) {
     const positions = {};
-    const layouts = [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0.5, 0.87],
-      [1.5, 0.87],
-      [2.5, 0.87],
-      [0, 1.74],
-      [1, 1.74],
-      [2, 1.74],
-      [0.5, 2.61],
-      [1.5, 2.61],
-      [2.5, 2.61],
-      [1, 3.48],
-      [2, 3.48],
-      [1.5, 4.35],
-      [2.5, 4.35],
-      [2, 5.22],
-      [3, 5.22],
-      [2.5, 6.09],
-    ];
-    hexes.forEach((hex, i) => {
-      const idx = hexIndex(hex.id);
-      const [col, row] = layouts[idx] || [i % 3, Math.floor(i / 3)];
-      const x = 120 + col * HEX_SIZE * 1.75;
-      const y = 80 + row * HEX_SIZE * 1.5;
-      positions[hex.id] = { x, y };
+    const rowConfig = [3, 4, 5, 4, 3];
+    const rowOffsets = [1, 0.5, 0, 0.5, 1];
+    
+    let hexIdx = 0;
+    const centerX = 300;
+    const startY = 70;
+    
+    for (let row = 0; row < rowConfig.length; row++) {
+      const hexesInRow = rowConfig[row];
+      const rowOffset = rowOffsets[row];
+      const y = startY + row * VERT_SPACING * 0.87;
+      
+      for (let col = 0; col < hexesInRow; col++) {
+        const x = centerX + (col - (hexesInRow - 1) / 2) * HORIZ_SPACING;
+        const expectedId = `h${hexIdx + 1}`;
+        positions[expectedId] = { x, y };
+        hexIdx++;
+      }
+    }
+    
+    hexes.forEach((hex) => {
+      if (positions[hex.id]) return;
+      
+      if (hex.row !== undefined && hex.col !== undefined) {
+        const row = hex.row;
+        const hexesInRow = rowConfig[row] || 5;
+        const y = startY + row * VERT_SPACING * 0.87;
+        const x = centerX + (hex.col - (hexesInRow - 1) / 2) * HORIZ_SPACING;
+        positions[hex.id] = { x, y };
+      } else {
+        const idx = hexIndex(hex.id);
+        let cumulative = 0;
+        for (let r = 0; r < rowConfig.length; r++) {
+          if (idx < cumulative + rowConfig[r]) {
+            const col = idx - cumulative;
+            const hexesInRow = rowConfig[r];
+            const y = startY + r * VERT_SPACING * 0.87;
+            const x = centerX + (col - (hexesInRow - 1) / 2) * HORIZ_SPACING;
+            positions[hex.id] = { x, y };
+            break;
+          }
+          cumulative += rowConfig[r];
+        }
+      }
     });
+    
     return positions;
   }
 
@@ -88,11 +110,26 @@
     }
     const cx = x / count;
     const cy = y / count;
-    const angle = (parseInt(vertex.id.replace(/\D/g, ""), 10) || 0) * 1.2;
-    return {
-      x: cx + Math.cos(angle) * HEX_SIZE * 0.85,
-      y: cy + Math.sin(angle) * HEX_SIZE * 0.85,
-    };
+    
+    if (count === 1) {
+      const vid = parseInt(vertex.id.replace(/\D/g, ""), 10) || 0;
+      const angle = (vid * 1.05) + Math.PI / 6;
+      return {
+        x: cx + Math.cos(angle) * HEX_SIZE,
+        y: cy + Math.sin(angle) * HEX_SIZE,
+      };
+    }
+    
+    if (count === 2) {
+      const vid = parseInt(vertex.id.replace(/\D/g, ""), 10) || 0;
+      const angle = (vid * 0.9) + Math.PI / 4;
+      return {
+        x: cx + Math.cos(angle) * HEX_SIZE * 0.6,
+        y: cy + Math.sin(angle) * HEX_SIZE * 0.6,
+      };
+    }
+    
+    return { x: cx, y: cy };
   }
 
   function svgEl(tag, attrs) {

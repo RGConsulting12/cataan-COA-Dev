@@ -8,6 +8,18 @@ python -m cli recommend --file examples/sample1_early_expansion.json
 
 See `docs/GAME-STATE-SCHEMA.md` for field definitions. These samples contain **no `proposed_actions`** — they exercise the LLM recommendation path only.
 
+## Board layout
+
+All samples use the **standard Catan beginner board** with:
+
+- **19 hexes** in 3-4-5-4-3 row arrangement
+- **54 vertices** (settlement/city locations)
+- **87 edges** (road positions)
+- **9 harbors** around the perimeter (4 special 2:1 + 5 generic 3:1)
+- Fixed terrain and number token placement per the official 5th edition beginner layout
+
+The board template is available at `data/boards/beginner.json` for reference.
+
 ## Why these five?
 
 The library covers the main **decision axes** where strong Catan play diverges and where COA trees branch:
@@ -96,17 +108,17 @@ Use them to sanity-check API/CLI behavior, compare model outputs across scenario
 |-------|-------|
 | **Phase** | `robber` |
 | **Theme** | Knight → robber + steal |
-| **Active player** | Blue (5 VP, knight in hand) |
+| **Active player** | Red (4 VP, played knight) |
 
-**Scenario:** Blue played a knight and must **move the robber** and **steal**. Red leads at 7 VP (including hidden VP) with a city on grain `h1` (9). White holds longest road and largest army.
+**Scenario:** Red played a knight and must **move the robber** (currently on desert h10) and **steal**. Blue leads at 7 VP with a city on fields h12 (number 8). White holds largest army.
 
 **Decision node:** Block **VP leader** vs **production leader**; steal from whom on the target hex.
 
 **Expected COA style:**
 
-1. **Move robber** to `h1` or `h2` — deny red's grain/ore income.
-2. **Steal from red** on placement — leader denial plus resource swing.
-3. **Build** after robber — if hand supports road/settlement and robber isn't on blue's hexes.
+1. **Move robber** to `h12` (fields-8) — deny blue's high-probability grain production from city.
+2. **Steal from blue** on placement — leader denial plus resource swing.
+3. **Consider h5 or h7** (brick-6 or brick-10) — alternative targets if blocking grain isn't priority.
 
 **Pattern label:** `interaction_timing` / `leader_denial`
 
@@ -118,17 +130,17 @@ Use them to sanity-check API/CLI behavior, compare model outputs across scenario
 |-------|-------|
 | **Phase** | `main` |
 | **Theme** | Route to 10 VP |
-| **Active player** | Red (8 VP: 2 cities + 1 hidden VP + 2 dev cards) |
+| **Active player** | Green (8 VP visible + 1 hidden VP = 9 actual) |
 
-**Scenario:** One point from victory. Blue at 7 VP threatens **longest road** extension; green at 7 VP holds **largest army** (3 knights). Red has ore for a city but only one settlement remaining.
+**Scenario:** Critical endgame turn. Orange leads at 9 VP (2 cities + 2 settlements + longest road + largest army). Green has 8 visible VP (2 cities + 2 settlements) but holds 1 hidden VP card, putting them at 9 actual. Green has 3 grain + 4 ore — enough for a city.
 
-**Decision node:** **Visible city VP** vs **dev-card VP/knight** vs **blocking** via trade or build.
+**Decision node:** **Build city for immediate win** vs **reveal hidden VP after another point** vs **blocking** orange's path.
 
 **Expected COA style:**
 
-1. **Build city** — fastest visible win if affordable.
-2. **Buy development card** — hidden VP or knight to contest army/robber.
-3. **Maritime trade** — close a one-resource gap for city; avoid trades that enable blue's road.
+1. **Build city** on v17 or v28 — immediate 10 VP win with current resources (3 grain + 4 ore).
+2. **Buy development card** — backup if city not optimal; hidden VP or knight upside.
+3. **Maritime trade** — only if one resource short; green already has city resources.
 
 **Pattern label:** `endgame_tempo` / `win_condition_race`
 
@@ -141,7 +153,7 @@ Use them to sanity-check API/CLI behavior, compare model outputs across scenario
 pytest -v
 
 # Full recommend path (requires API + Ollama)
-uvicorn app.main:app --port 8080
+uvicorn app.main:app --port 8085
 python -m cli recommend --file examples/sample1_early_expansion.json
 # … repeat for sample2–sample5
 ```
